@@ -1,0 +1,8 @@
+package: github.com/ghetzel/plexutil
+import:
+- package: github.com/ghetzel/cli
+- package: github.com/ghetzel/go-stockutil
+  subpackages:
+  - sliceutil
+- package: github.com/op/go-logging
+- package: github.com/ghetzel/bee-hotel

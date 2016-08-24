@@ -1,0 +1,20 @@
+hash: 9220769dda83671bc97a193e4af83dc333bb11dddc19b221c305a4beba4e4486
+updated: 2016-08-24T12:35:39.519000017-04:00
+imports:
+- name: github.com/dghubble/sling
+  version: 52e88a7b75a5db3b49f8911f16d49d9b7b67adc5
+- name: github.com/ghetzel/bee-hotel
+  version: c6fb2b18c9efcd606037411eeaba355ba50203a5
+- name: github.com/ghetzel/cli
+  version: 4733699ce30faa633c4db36ebfbe427963593d7d
+- name: github.com/ghetzel/go-stockutil
+  version: 196121ff70cbadd8b87f9c9a00f1fc78909cdb80
+  subpackages:
+  - sliceutil
+- name: github.com/google/go-querystring
+  version: 9235644dd9e52eeae6fa48efd539fdc351a0af53
+  subpackages:
+  - query
+- name: github.com/op/go-logging
+  version: 970db520ece77730c7e4724c61121037378659d9
+devImports: []
