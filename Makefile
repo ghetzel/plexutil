@@ -1,6 +1,6 @@
 .PHONY: test
 
-all: vendor fmt test build
+all: vendor fmt build
 
 update:
 	test -d vendor && rm -rf vendor || exit 0

@@ -1,20 +1,26 @@
-hash: 9220769dda83671bc97a193e4af83dc333bb11dddc19b221c305a4beba4e4486
-updated: 2016-08-24T12:35:39.519000017-04:00
+hash: 9e8b6504af1cad058e0931c2d70925995ec1424fbe8020fec28ccfcc9ed4837b
+updated: 2016-08-24T22:22:21.590919597-04:00
 imports:
+- name: github.com/cloudfoundry-incubator/candiedyaml
+  version: a55cbe5235eca660149a2f4e581ed829506f2f9a
 - name: github.com/dghubble/sling
-  version: 52e88a7b75a5db3b49f8911f16d49d9b7b67adc5
+  version: a55cbe5235eca660149a2f4e581ed829506f2f9a
+- name: github.com/fatih/color
+  version: 87d4004f2ab62d0d255e0a38f1680aa534549fe3
 - name: github.com/ghetzel/bee-hotel
-  version: c6fb2b18c9efcd606037411eeaba355ba50203a5
+  version: a55cbe5235eca660149a2f4e581ed829506f2f9a
 - name: github.com/ghetzel/cli
-  version: 4733699ce30faa633c4db36ebfbe427963593d7d
+  version: a55cbe5235eca660149a2f4e581ed829506f2f9a
 - name: github.com/ghetzel/go-stockutil
-  version: 196121ff70cbadd8b87f9c9a00f1fc78909cdb80
+  version: a55cbe5235eca660149a2f4e581ed829506f2f9a
   subpackages:
   - sliceutil
+- name: github.com/ghodss/yaml
+  version: a55cbe5235eca660149a2f4e581ed829506f2f9a
 - name: github.com/google/go-querystring
-  version: 9235644dd9e52eeae6fa48efd539fdc351a0af53
+  version: a55cbe5235eca660149a2f4e581ed829506f2f9a
   subpackages:
   - query
 - name: github.com/op/go-logging
-  version: 970db520ece77730c7e4724c61121037378659d9
+  version: a55cbe5235eca660149a2f4e581ed829506f2f9a
 devImports: []

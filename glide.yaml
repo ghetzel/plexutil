@@ -6,3 +6,5 @@ import:
   - sliceutil
 - package: github.com/op/go-logging
 - package: github.com/ghetzel/bee-hotel
+- package: github.com/ghodss/yaml
+- package: github.com/fatih/color

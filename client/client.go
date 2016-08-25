@@ -2,6 +2,7 @@ package client
 
 import (
 	"github.com/ghetzel/bee-hotel"
+	"github.com/ghetzel/plexutil"
 )
 
 type PlexClient struct {
@@ -14,6 +15,12 @@ func New(address string) *PlexClient {
 	return &PlexClient{
 		MultiClient: mc,
 	}
+}
+
+func NewFromConfig(config plexutil.Configuration) *PlexClient {
+	client := New(config.URL)
+
+	return client
 }
 
 func (self *PlexClient) Address() string {
@@ -35,5 +42,15 @@ func (self *PlexClient) GetStatus() (MediaContainer, error) {
 		return status, nil
 	} else {
 		return status, err
+	}
+}
+
+func (self *PlexClient) CurrentSessions() ([]Video, error) {
+	sessions := MediaContainer{}
+
+	if _, err := self.Request(`GET`, `/status/sessions`, nil, &sessions, nil); err == nil {
+		return sessions.Videos, nil
+	} else {
+		return []Video{}, err
 	}
 }
