@@ -9,8 +9,10 @@ import (
 )
 
 type Configuration struct {
-	URL  string `json:"url"`
-	path string
+	URL        string                 `json:"url"`
+	Parameters map[string]interface{} `json:"parameters"`
+	Headers    map[string]interface{} `json:"headers"`
+	path       string
 }
 
 func (self *Configuration) Save() error {

@@ -1,5 +1,5 @@
 hash: 9e8b6504af1cad058e0931c2d70925995ec1424fbe8020fec28ccfcc9ed4837b
-updated: 2016-08-25T19:12:30.032804277-04:00
+updated: 2016-08-26T14:16:20.156135087-04:00
 imports:
 - name: github.com/cloudfoundry-incubator/candiedyaml
   version: 99c3df83b51532e3615f851d8c2dbb638f5313bf
@@ -8,7 +8,7 @@ imports:
 - name: github.com/fatih/color
   version: 87d4004f2ab62d0d255e0a38f1680aa534549fe3
 - name: github.com/ghetzel/bee-hotel
-  version: 318a86a8b8cc49f1a50c9f6bda47b337e9a13c60
+  version: 07ffbc8bf2c7526bcd657ce588b538f8a066d94f
 - name: github.com/ghetzel/cli
   version: 4733699ce30faa633c4db36ebfbe427963593d7d
 - name: github.com/ghetzel/go-stockutil

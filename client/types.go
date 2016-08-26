@@ -33,19 +33,20 @@ type Directory struct {
 	Guid                  string     `xml:"guid,attr,omitempty" json:"Guid,omitempty"`   // "com.plexapp.agents.thetvdb://77904"
 	Index                 int        `xml:"index,attr,omitempty" json:"Index,omitempty"` // "3"
 	Key                   string     `xml:"key,attr,omitempty" json:"Key,omitempty"`     // "/library/metadata/20448/children"
+	PathKey               string     `xml:"-" json:"-"`
 	Language              string     `xml:"language,attr,omitempty" json:"Language,omitempty"`
 	LeafCount             int        `xml:"leafCount,attr,omitempty" json:"LeafCount,omitempty"`               // "98"
 	LibrarySectionID      int        `xml:"librarySectionID,attr,omitempty" json:"LibrarySectionID,omitempty"` // "4"
 	Locations             []Location `xml:"Location" json:"Location"`
-	OriginallyAvailableAt string     `xml:"originallyAvailableAt,omitempty" json:"OriginallyAvailableAt,omitempty"` // "1983-01-23"
-	ParentIndex           int        `xml:"parentIndex,attr,omitempty" json:"ParentIndex,omitempty"`                // "1"
-	ParentKey             string     `xml:"parentKey,attr,omitempty" json:"ParentKey,omitempty"`                    // "/library/metadata/14207"
-	ParentRatingKey       int        `xml:"parentRatingKey,attr,omitempty" json:"ParentRatingKey,omitempty"`        // "14207"
-	ParentTheme           string     `xml:"parentTheme,attr,omitempty" json:"ParentTheme,omitempty"`                // "/library/metadata/14207/theme/1471544783"
-	ParentThumb           string     `xml:"parentThumb,attr,omitempty" json:"ParentThumb,omitempty"`                // "/library/metadata/14207/thumb/1471544783"
-	ParentTitle           string     `xml:"parentTitle,attr,omitempty" json:"ParentTitle,omitempty"`                // "The O.C."
-	Rating                float32    `xml:"rating,attr,omitempty" json:"Rating,omitempty"`                          // "7.8"
-	RatingKey             int        `xml:"ratingKey,attr,omitempty" json:"RatingKey,omitempty"`                    // "20448"
+	OriginallyAvailableAt string     `xml:"originallyAvailableAt,attr,omitempty" json:"OriginallyAvailableAt,omitempty"` // "1983-01-23"
+	ParentIndex           int        `xml:"parentIndex,attr,omitempty" json:"ParentIndex,omitempty"`                     // "1"
+	ParentKey             string     `xml:"parentKey,attr,omitempty" json:"ParentKey,omitempty"`                         // "/library/metadata/14207"
+	ParentRatingKey       int        `xml:"parentRatingKey,attr,omitempty" json:"ParentRatingKey,omitempty"`             // "14207"
+	ParentTheme           string     `xml:"parentTheme,attr,omitempty" json:"ParentTheme,omitempty"`                     // "/library/metadata/14207/theme/1471544783"
+	ParentThumb           string     `xml:"parentThumb,attr,omitempty" json:"ParentThumb,omitempty"`                     // "/library/metadata/14207/thumb/1471544783"
+	ParentTitle           string     `xml:"parentTitle,attr,omitempty" json:"ParentTitle,omitempty"`                     // "The O.C."
+	Rating                float32    `xml:"rating,attr,omitempty" json:"Rating,omitempty"`                               // "7.8"
+	RatingKey             int        `xml:"ratingKey,attr,omitempty" json:"RatingKey,omitempty"`                         // "20448"
 	Refreshing            int        `xml:"refreshing,attr,omitempty" json:"Refreshing,omitempty"`
 	Scanner               string     `xml:"scanner,attr,omitempty" json:"Scanner,omitempty"`
 	Studio                string     `xml:"studio,attr,omitempty" json:"Studio,omitempty"`       // "NBC"
@@ -75,7 +76,7 @@ type Hub struct {
 type MediaContainer struct {
 	AllowSync                     int         `xml:"allowSync,attr,omitempty" json:"AllowSync,omitempty"` // "1"
 	Art                           string      `xml:"art,attr,omitempty" json:"Art,omitempty"`
-	Directories                   []Directory `xml:"Directory" json:"Directory"`
+	Directories                   []Directory `xml:"Directory" json:"Directories"`
 	Hubs                          []Hub       `xml:"Hub" json:"Hub"`
 	Identifier                    string      `xml:"identifier,omitempty" json:"Identifier,omitempty"`                  // "com.plexapp.plugins.library"
 	LibrarySectionID              int         `xml:"librarySectionID,attr,omitempty" json:"LibrarySectionID,omitempty"` // "4"
@@ -85,14 +86,14 @@ type MediaContainer struct {
 	MediaTagVersion               int         `xml:"mediaTagVersion,attr,omitempty" json:"MediaTagVersion,omitempty"` // "1466734815"
 	NoCache                       int         `xml:"nocache,attr,omitempty" json:"Nocache,omitempty"`
 	Offset                        int         `xml:"offset,attr,omitempty" json:"Offset,omitempty"`
-	Settings                      []Setting   `xml:"Setting" json:"Setting"`
+	Settings                      []Setting   `xml:"Setting" json:"Settings"`
 	Size                          int         `xml:"size,omitempty" json:"Size,omitempty"` // "8"
 	SortAscending                 int         `xml:"sortAsc,attr,omitempty" json:"SortAsc,omitempty"`
 	Thumb                         string      `xml:"thumb,attr,omitempty" json:"Thumb,omitempty"`
 	Title1                        string      `xml:"title1,attr,omitempty" json:"Title1,omitempty"` // "Plex Library"
 	Title2                        string      `xml:"title2,attr,omitempty" json:"Title2,omitempty"` // "Plex Library"
 	TotalSize                     int         `xml:"totalSize,attr,omitempty" json:"TotalSize,omitempty"`
-	Videos                        []Video     `xml:"Video" json:"Video"`
+	Videos                        []Video     `xml:"Video" json:"Videos"`
 	ViewGroup                     string      `xml:"viewGroup,omitempty" json:"ViewGroup,omitempty"`
 	ViewMode                      int         `xml:"viewMode,attr,omitempty" json:"ViewMode,omitempty"`
 	AllowCameraUpload             int         `xml:"allowCameraUpload,attr,omitempty" json:"AllowCameraUpload,omitempty"`                         // "1"

@@ -27,9 +27,9 @@ var plex *client.PlexClient
 
 func main() {
 	app := cli.NewApp()
-	app.Name = `plexutil`
-	app.Usage = `Manage a Plex Media Server from the command line`
-	app.Version = `0.0.1`
+	app.Name = plexutil.Name
+	app.Usage = plexutil.Description
+	app.Version = plexutil.Version
 	app.EnableBashCompletion = false
 
 	app.Flags = []cli.Flag{
@@ -56,12 +56,25 @@ func main() {
 	}
 
 	app.Before = func(c *cli.Context) error {
+		logging.SetFormatter(logging.MustStringFormatter(`%{color}%{level:.4s}%{color:reset}[%{id:04d}] %{message}`))
+
+		if level, err := logging.LogLevel(c.String(`log-level`)); err == nil {
+			logging.SetLevel(level, `main`)
+			logging.SetLevel(level, `plex`)
+		} else {
+			return err
+		}
+
 		if config, err := plexutil.LoadConfig(c.String(`config`)); err == nil || os.IsNotExist(err) {
 			if url := c.String(`url`); url != `` {
 				config.URL = url
 			}
 
 			plex = client.NewFromConfig(config)
+
+			if err := plex.Initialize(); err != nil {
+				log.Fatal(err)
+			}
 		} else {
 			log.Fatal(err)
 		}
@@ -123,9 +136,9 @@ func main() {
 			Name:  `sessions`,
 			Usage: `List all currently playing media`,
 			Flags: []cli.Flag{
-				cli.BoolTFlag{
-					Name:  `current, c`,
-					Usage: `Whether to display only active sessions or to show all session history`,
+				cli.BoolFlag{
+					Name:  `history, H`,
+					Usage: `Whether to display all session history or only active sessions`,
 				},
 				cli.IntFlag{
 					Name:  `per-page, l`,
@@ -141,15 +154,15 @@ func main() {
 			Action: func(c *cli.Context) {
 				var videos []client.Video
 
-				if c.Bool(`current`) {
-					if v, err := plex.CurrentSessions(); err == nil {
+				if c.Bool(`history`) {
+					if v, err := plex.RecentSessions(c.Int(`per-page`), c.Int(`page`)); err == nil {
 						videos = v
 					} else {
 						log.Fatal(err)
 						return
 					}
 				} else {
-					if v, err := plex.RecentSessions(c.Int(`per-page`), c.Int(`page`)); err == nil {
+					if v, err := plex.CurrentSessions(); err == nil {
 						videos = v
 					} else {
 						log.Fatal(err)
@@ -159,6 +172,8 @@ func main() {
 
 				printWithFormat(c.GlobalString(`format`), videos, func() {
 					tw := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
+
+					fmt.Fprintf(tw, "User\tState\tProgress\tShow\tEpisode\tTitle\tAddress\tDevice\n")
 
 					for _, video := range videos {
 
@@ -174,10 +189,9 @@ func main() {
 							printAsciiProgressBar(tw, video.TranscodeSession.Progress, 20, video.Player.State)
 						}
 
-						fmt.Fprintf(tw, "\t%s\tS%02dE%02d\t%s\t%s\t%s\n",
+						fmt.Fprintf(tw, "\t%s\t%s\t%s\t%s\t%s\n",
 							video.GrandparentTitle,
-							video.ParentIndex,
-							video.Index,
+							getEpisodeNumber(&video),
 							video.Title,
 							video.Player.Address,
 							video.Player.Title)
@@ -185,6 +199,66 @@ func main() {
 
 					tw.Flush()
 				})
+			},
+		}, {
+			Name:  `ls`,
+			Usage: `List all objects in a given path`,
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  `id`,
+					Usage: `Only list the URL paths for accessing child objects`,
+				},
+				cli.StringFlag{
+					Name:  `area, a`,
+					Usage: `Which media area to enumerate`,
+					Value: `library`,
+				},
+			},
+			Action: func(c *cli.Context) {
+				area := c.String(`area`)
+				path := strings.Split(strings.Trim(c.Args().First(), `/`), `/`)
+
+				if results, err := plex.ListDirectory(area, path); err == nil {
+					printWithFormat(c.GlobalString(`format`), results, func() {
+						tw := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
+
+						if len(results.Directories) > 0 {
+							fmt.Fprintf(tw, "Subdirectories:\tPath Key\tFriendly Name\tSection\n")
+
+							// list directories
+							for _, directory := range results.Directories {
+								parts := strings.SplitN(directory.PathKey, `?`, 2)
+								key := parts[0]
+
+								fmt.Fprintf(tw, "d---\t%s\t%s\t%s\n",
+									key,
+									directory.Title,
+									results.LibrarySectionTitle)
+							}
+						}
+
+						if len(results.Videos) > 0 {
+							fmt.Fprintf(tw, "Videos:\tID\tType\tShow\tEpisode\tTitle\tDuration\tAired At\n")
+
+							// list videos
+							for _, video := range results.Videos {
+								fmt.Fprintf(tw, "f---\t%d\t%s\t%s\t%s\t%s\t%s\t%s\n",
+									video.RatingKey,
+									video.Type,
+									video.GrandparentTitle,
+									getEpisodeNumber(&video),
+									video.Title,
+									getReadableTime(video.Duration),
+									video.OriginallyAvailableAt)
+							}
+						}
+
+						tw.Flush()
+					})
+				} else {
+					log.Fatal(err)
+					return
+				}
 			},
 		},
 	}
@@ -222,6 +296,21 @@ func printWithFormat(format string, data interface{}, fallbackFunc ...func()) {
 	} else {
 		log.Fatal(err)
 	}
+}
+
+func getReadableTime(msec int) string {
+	sec := int64(float64(msec) / float64(1000))
+	return strings.TrimLeft(time.Unix(sec, 0).UTC().Format("15:04:05"), `0:`)
+}
+
+func getEpisodeNumber(video *client.Video) string {
+	if video != nil {
+		if video.GrandparentTitle != `` {
+			return fmt.Sprintf("S%02dE%02d", video.ParentIndex, video.Index)
+		}
+	}
+
+	return ``
 }
 
 func printAsciiProgressBar(w io.Writer, percent float64, totalChars int, state string) {
