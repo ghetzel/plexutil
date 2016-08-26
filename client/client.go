@@ -54,3 +54,19 @@ func (self *PlexClient) CurrentSessions() ([]Video, error) {
 		return []Video{}, err
 	}
 }
+
+func (self *PlexClient) RecentSessions(perPage int, pageNum int) ([]Video, error) {
+	sessions := MediaContainer{}
+
+	if _, err := self.Request(`GET`, `/status/sessions/history/all`, nil, &sessions, nil, func(request *bee.MultiClientRequest) error {
+		request.QuerySet(`X-Plex-Container-Size`, perPage)
+		request.QuerySet(`X-Plex-Container-Start`, (perPage * (pageNum - 1)))
+
+		return nil
+
+	}); err == nil {
+		return sessions.Videos, nil
+	} else {
+		return []Video{}, err
+	}
+}
