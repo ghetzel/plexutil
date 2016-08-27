@@ -287,6 +287,60 @@ func main() {
 							fmt.Fprintf(tw, "Duration:\t%s\n", getReadableTime(video.Duration))
 							fmt.Fprintf(tw, "Summary:\t%s\n", video.Summary)
 							fmt.Fprintf(tw, "Rating:\t%s\n", video.ContentRating)
+							fmt.Fprintf(tw, "Resolution:\t%dx%d\n", video.Media.Width, video.Media.VideoResolution)
+							fmt.Fprintf(tw, "Framerate:\t%s\n", video.Media.VideoFrameRate)
+							fmt.Fprintf(tw, "Parts:\n")
+
+							if len(video.Media.Parts) > 0 {
+								for i, part := range video.Media.Parts {
+									fmt.Fprintf(tw, "%d:\n", i)
+									fmt.Fprintf(tw, "  ID:\t%d\n", part.Id)
+									fmt.Fprintf(tw, "  URL:\t%s%s\n", plex.Address(), part.Key)
+									fmt.Fprintf(tw, "  SourceFile:\t%s\n", part.File)
+									fmt.Fprintf(tw, "  Duration:\t%s\n", getReadableTime(part.Duration))
+
+									if v, err := stringutil.ToByteString(part.Size, `%.2f`); err == nil {
+										fmt.Fprintf(tw, "  Size:\t%s\n", v)
+									}
+
+									fmt.Fprintf(tw, "  Container:\t%s\n", part.Container)
+									fmt.Fprintf(tw, "  Streams:\n")
+
+									for j, stream := range part.Streams {
+										fmt.Fprintf(tw, "  %d:\n", j)
+
+										switch stream.StreamType {
+										case 1:
+											fmt.Fprintf(tw, "    Type:\tvideo\n")
+											fmt.Fprintf(tw, "    Resolution:\t%dx%d\n", stream.Width, stream.Height)
+											fmt.Fprintf(tw, "    Codec:\t%s (%s)\n", stream.Codec, stream.CodecID)
+											fmt.Fprintf(tw, "    Duration:\t%s\n", getReadableTime(stream.Duration))
+											fmt.Fprintf(tw, "    Framerate:\t%g (%s)\n", stream.FrameRate, stream.FrameRateMode)
+											fmt.Fprintf(tw, "    BPP:\t%d\n", stream.BitDepth)
+											fmt.Fprintf(tw, "    PixelFormat:\t%s\n", stream.PixelFormat)
+
+										case 2:
+											fmt.Fprintf(tw, "    Type:\taudio\n")
+											fmt.Fprintf(tw, "    Codec:\t%s (%s)\n", stream.Codec, stream.CodecID)
+											fmt.Fprintf(tw, "    Duration:\t%s\n", getReadableTime(stream.Duration))
+											fmt.Fprintf(tw, "    Bitrate:\t%dKbps\n", stream.Bitrate)
+											fmt.Fprintf(tw, "    BitsPerSample:\t%d\n", stream.BitDepth)
+
+										case 3:
+											fmt.Fprintf(tw, "    Type:\tsubtitles\n")
+											fmt.Fprintf(tw, "    Codec:\t%s (%s)\n", stream.Codec, stream.CodecID)
+										}
+
+										if stream.Profile != `` {
+											fmt.Fprintf(tw, "    Profile:\t%s\n", stream.Profile)
+										}
+
+										fmt.Fprintf(tw, "    StreamID:\t%d\n", stream.Id)
+									}
+
+									fmt.Fprintf(tw, "\n")
+								}
+							}
 
 							tw.Flush()
 						})
