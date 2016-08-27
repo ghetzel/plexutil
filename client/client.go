@@ -140,3 +140,21 @@ func (self *PlexClient) ListDirectory(area string, path []string) (MediaContaine
 		return results, err
 	}
 }
+
+func (self *PlexClient) GetMetadata(ratingKey int) (Video, error) {
+	results := MediaContainer{}
+
+	if _, err := self.Request(`GET`, fmt.Sprintf("/library/metadata/%d", ratingKey), nil, &results, nil); err == nil {
+		if l := len(results.Videos); l == 1 {
+			video := results.Videos[0]
+			video.LibrarySectionID = results.LibrarySectionID
+			video.LibrarySectionTitle = results.LibrarySectionTitle
+
+			return video, nil
+		} else {
+			return Video{}, fmt.Errorf("Too many results; expected: 1, got: %d", l)
+		}
+	} else {
+		return Video{}, err
+	}
+}

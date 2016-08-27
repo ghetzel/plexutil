@@ -1,5 +1,10 @@
 package client
 
+import (
+	"fmt"
+	"strings"
+)
+
 type Stream struct {
 	BitDepth           int     `xml:"bitDepth,attr,omitempty" json:"BitDepth,omitempty"`                     // "8"
 	Bitrate            int     `xml:"bitrate,attr,omitempty" json:"Bitrate,omitempty"`                       // "1375"
@@ -72,10 +77,42 @@ type Role struct {
 	Count int    `xml:"count,attr,omitempty" json:"Count,omitempty"`
 }
 
+type RoleSet []Role
+
+func (self RoleSet) String() string {
+	if len(self) == 0 {
+		return ``
+	} else {
+		output := make([]string, len(self))
+
+		for i, _ := range self {
+			output[i] = fmt.Sprintf("%s (as %q)", self[i].Tag, self[i].Role)
+		}
+
+		return strings.Join(output, `, `)
+	}
+}
+
 type Identifier struct {
 	Id    int    `xml:"id,attr,omitempty" json:"Id,omitempty"`
 	Tag   string `xml:"tag,attr,omitempty" json:"Tag,omitempty"`
 	Count int    `xml:"count,attr,omitempty" json:"Count,omitempty"`
+}
+
+type IdentifierSet []Identifier
+
+func (self IdentifierSet) String() string {
+	if len(self) == 0 {
+		return ``
+	} else {
+		output := make([]string, len(self))
+
+		for i, _ := range self {
+			output[i] = self[i].Tag
+		}
+
+		return strings.Join(output, `, `)
+	}
 }
 
 type Video struct {
@@ -87,10 +124,10 @@ type Video struct {
 	ChapterSource         string           `xml:"chapterSource,attr,omitempty" json:"ChapterSource,omitempty"` // ""
 	ContentRating         string           `xml:"contentRating,attr,omitempty" json:"ContentRating,omitempty"` // "TV-MA"
 	Country               Identifier       `xml:"Country" json:"Country,omitempty"`
-	Directors             []Identifier     `xml:"Director" json:"Directors,omitempty"`
+	Directors             IdentifierSet    `xml:"Director" json:"Directors,omitempty"`
 	Duration              int              `xml:"duration,attr,omitempty" json:"Duration,omitempty"` // "1260427"
 	Extras                []MediaContainer `xml:"Extras" json:"Extras,omitempty"`
-	Genres                []Identifier     `xml:"Genre" json:"Genres,omitempty"`
+	Genres                IdentifierSet    `xml:"Genre" json:"Genres,omitempty"`
 	GrandparentArt        string           `xml:"grandparentArt,attr,omitempty" json:"GrandparentArt,omitempty"`             // "/library/metadata/21666/art/1461210754"
 	GrandparentKey        string           `xml:"grandparentKey,attr,omitempty" json:"GrandparentKey,omitempty"`             // "/library/metadata/21666"
 	GrandparentRatingKey  int              `xml:"grandparentRatingKey,attr,omitempty" json:"GrandparentRatingKey,omitempty"` // "21666"
@@ -101,6 +138,7 @@ type Video struct {
 	Key                   string           `xml:"key,attr,omitempty" json:"Key,omitempty"`                                   // "/library/metadata/60627"
 	LastViewedAt          int              `xml:"lastViewedAt,attr,omitempty" json:"LastViewedAt,omitempty"`                 // "1471313734"
 	LibrarySectionID      int              `xml:"librarySectionID,attr,omitempty" json:"LibrarySectionID,omitempty"`         // "4"
+	LibrarySectionTitle   string           `xml:"-" json:"LibrarySectionTitle"`
 	Media                 Media            `xml:"Media" json:"Media,omitempty"`
 	OriginallyAvailableAt string           `xml:"originallyAvailableAt,attr,omitempty" json:"OriginallyAvailableAt,omitempty"` // "2016-02-24"
 	ParentIndex           int              `xml:"parentIndex,attr,omitempty" json:"ParentIndex,omitempty"`                     // "3"
@@ -108,12 +146,12 @@ type Video struct {
 	ParentRatingKey       int              `xml:"parentRatingKey,attr,omitempty" json:"ParentRatingKey,omitempty"`             // "60207"
 	Player                Player           `xml:"Player" json:"Player,omitempty"`
 	PrimaryExtraKey       string           `xml:"primaryExtraKey,attr,omitempty" json:"PrimaryExtraKey,omitempty"` // "/library/metadata/99398"
-	Producers             []Identifier     `xml:"Producer" json:"Producers,omitempty"`
+	Producers             IdentifierSet    `xml:"Producer" json:"Producers,omitempty"`
 	Rating                float32          `xml:"rating,attr,omitempty" json:"Rating,omitempty"`           // "8.0"
 	RatingImage           string           `xml:"ratingImage,attr,omitempty" json:"RatingImage,omitempty"` // "rottentomatoes://image.rating.certified"
 	RatingKey             int              `xml:"ratingKey,attr,omitempty" json:"RatingKey,omitempty"`     // "60627"
 	Related               []MediaContainer `xml:"Related" json:"Related,omitempty"`
-	Roles                 []Role           `xml:"Role" json:"Role,omitempty"`
+	Roles                 RoleSet          `xml:"Role" json:"Role,omitempty"`
 	Studio                string           `xml:"studio,attr,omitempty" json:"Studio,omitempty"`   // "United Artists"
 	Summary               string           `xml:"summary,attr,omitempty" json:"Summary,omitempty"` // "Abbi pretends to be Ilana to cover her shift at the food co-op, while Ilana goes to an important doctor's appointment on Long Island."
 	Tagline               string           `xml:"tagline,attr,omitempty" json:"Tagline,omitempty"` // "Is it a game, or is it real?"
@@ -126,6 +164,6 @@ type Video struct {
 	ViewCount             int              `xml:"viewCount,attr,omitempty" json:"ViewCount,omitempty"`   // "1"
 	ViewedAt              int64            `xml:"viewedAt,attr,omitempty" json:"ViewedAt,omitempty"`     // "1472089998"
 	ViewOffset            int              `xml:"viewOffset,attr,omitempty" json:"ViewOffset,omitempty"` // "102000"
-	Writers               []Identifier     `xml:"Writer" json:"Writers,omitempty"`
+	Writers               IdentifierSet    `xml:"Writer" json:"Writers,omitempty"`
 	Year                  int              `xml:"year,attr,omitempty" json:"Year,omitempty"` // "2016"
 }

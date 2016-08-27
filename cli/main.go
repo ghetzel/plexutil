@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
-	"github.com/fatih/color"
 	"github.com/ghetzel/bee-hotel"
 	"github.com/ghetzel/cli"
 	"github.com/ghetzel/go-stockutil/stringutil"
@@ -176,7 +175,6 @@ func main() {
 					fmt.Fprintf(tw, "User\tState\tProgress\tShow\tEpisode\tTitle\tAddress\tDevice\n")
 
 					for _, video := range videos {
-
 						fmt.Fprintf(tw, "%s\t%s\t",
 							video.User.Title,
 							video.Player.State)
@@ -200,12 +198,13 @@ func main() {
 					tw.Flush()
 				})
 			},
-		}, {
+		},
+		{
 			Name:  `ls`,
 			Usage: `List all objects in a given path`,
 			Flags: []cli.Flag{
 				cli.BoolFlag{
-					Name:  `id`,
+					Name:  `id, I`,
 					Usage: `Only list the URL paths for accessing child objects`,
 				},
 				cli.StringFlag{
@@ -222,35 +221,44 @@ func main() {
 					printWithFormat(c.GlobalString(`format`), results, func() {
 						tw := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
 
-						if len(results.Directories) > 0 {
-							fmt.Fprintf(tw, "Subdirectories:\tPath Key\tFriendly Name\tSection\n")
-
-							// list directories
+						if c.Bool(`id`) {
 							for _, directory := range results.Directories {
-								parts := strings.SplitN(directory.PathKey, `?`, 2)
-								key := parts[0]
-
-								fmt.Fprintf(tw, "d---\t%s\t%s\t%s\n",
-									key,
-									directory.Title,
-									results.LibrarySectionTitle)
+								fmt.Fprintf(tw, "%s\n", directory.PathKey)
 							}
-						}
 
-						if len(results.Videos) > 0 {
-							fmt.Fprintf(tw, "Videos:\tID\tType\tShow\tEpisode\tTitle\tDuration\tAired At\n")
-
-							// list videos
 							for _, video := range results.Videos {
-								fmt.Fprintf(tw, "f---\t%d\t%s\t%s\t%s\t%s\t%s\t%s\n",
-									video.RatingKey,
-									video.Type,
-									video.GrandparentTitle,
-									getEpisodeNumber(&video),
-									video.Title,
-									getReadableTime(video.Duration),
-									video.OriginallyAvailableAt)
+								fmt.Fprintf(tw, "%d\n", video.RatingKey)
 							}
+						} else {
+
+							if len(results.Directories) > 0 {
+								fmt.Fprintf(tw, "Subdirectories:\tPath Key\tFriendly Name\tSection\n")
+
+								// list directories
+								for _, directory := range results.Directories {
+									fmt.Fprintf(tw, "d---\t%s\t%s\t%s\n",
+										directory.PathKey,
+										directory.Title,
+										results.LibrarySectionTitle)
+								}
+							}
+
+							if len(results.Videos) > 0 {
+								fmt.Fprintf(tw, "Videos:\tID\tType\tShow\tEpisode\tTitle\tDuration\tAired At\n")
+
+								// list videos
+								for _, video := range results.Videos {
+									fmt.Fprintf(tw, "f---\t%d\t%s\t%s\t%s\t%s\t%s\t%s\n",
+										video.RatingKey,
+										video.Type,
+										video.GrandparentTitle,
+										getEpisodeNumber(&video),
+										video.Title,
+										getReadableTime(video.Duration),
+										video.OriginallyAvailableAt)
+								}
+							}
+
 						}
 
 						tw.Flush()
@@ -258,6 +266,35 @@ func main() {
 				} else {
 					log.Fatal(err)
 					return
+				}
+			},
+		},
+		{
+			Name:  `info`,
+			Usage: `Show information about a specific media entry`,
+			Flags: []cli.Flag{},
+			Action: func(c *cli.Context) {
+				if id, err := stringutil.ConvertToInteger(c.Args().First()); err == nil {
+					if video, err := plex.GetMetadata(int(id)); err == nil {
+						printWithFormat(c.GlobalString(`format`), video, func() {
+							tw := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
+
+							fmt.Fprintf(tw, "Section:\t%s\n", video.LibrarySectionTitle)
+							fmt.Fprintf(tw, "Show:\t%s\n", video.GrandparentTitle)
+							fmt.Fprintf(tw, "Title:\t%s\n", video.Title)
+							fmt.Fprintf(tw, "Season:\t%d\n", video.ParentIndex)
+							fmt.Fprintf(tw, "Episode:\t%d\n", video.Index)
+							fmt.Fprintf(tw, "Duration:\t%s\n", getReadableTime(video.Duration))
+							fmt.Fprintf(tw, "Summary:\t%s\n", video.Summary)
+							fmt.Fprintf(tw, "Rating:\t%s\n", video.ContentRating)
+
+							tw.Flush()
+						})
+					} else {
+						log.Fatal(err)
+					}
+				} else {
+					log.Fatal(err)
 				}
 			},
 		},
@@ -314,8 +351,6 @@ func getEpisodeNumber(video *client.Video) string {
 }
 
 func printAsciiProgressBar(w io.Writer, percent float64, totalChars int, state string) {
-	color.Output = w
-
 	output := ``
 	numOn := int(math.Ceil(math.Mod(percent, float64(totalChars))))
 	numOff := (totalChars - numOn)
@@ -328,12 +363,5 @@ func printAsciiProgressBar(w io.Writer, percent float64, totalChars int, state s
 		output = output + fmt.Sprintf("%c", 0x2591)
 	}
 
-	switch state {
-	case `playing`:
-		color.New(color.FgGreen).Printf("%s", output)
-	case `paused`:
-		color.New(color.FgRed).Printf("%s", output)
-	default:
-		fmt.Fprintf(w, output)
-	}
+	fmt.Fprintf(w, output)
 }
