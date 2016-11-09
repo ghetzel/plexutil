@@ -15,6 +15,7 @@ import (
 	"math"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -360,28 +361,38 @@ func main() {
 									}
 								}
 
+								lines := make([]string, 0)
+
 								for _, video := range videos {
 									if entryMatch == `` || (entryMatches(getEpisodeNumber(&video), entryMatch) || entryMatches(video.Title, entryMatch)) {
 										if c.Bool(`source-file`) {
 											for _, part := range video.Media.Parts {
-												fmt.Println(part.File)
+												lines = append(lines, part.File)
 											}
 										} else if c.Bool(`url`) {
 											for _, part := range video.Media.Parts {
-												fmt.Printf("%s%s\n", plex.Address(), part.Key)
+												lines = append(lines, fmt.Sprintf("%s%s", plex.Address(), part.Key))
 											}
 										} else {
-											fmt.Printf("%d\t%s\t%s\t%s\t%s\t%s\t%s\n",
-												video.RatingKey,
-												video.Type,
+											lines = append(lines, fmt.Sprintf("%s\t%s\t%s\t%s\t%s",
 												video.GrandparentTitle,
 												getEpisodeNumber(&video),
 												video.Title,
 												getReadableTime(video.Duration),
-												video.OriginallyAvailableAt)
+												video.OriginallyAvailableAt))
 										}
 									}
 								}
+
+								sort.Strings(lines)
+
+								tw := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
+
+								for _, line := range lines {
+									fmt.Fprintf(tw, "%s\n", line)
+								}
+
+								tw.Flush()
 							}
 						}
 					}
