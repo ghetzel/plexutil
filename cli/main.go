@@ -14,6 +14,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"regexp"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -21,6 +22,7 @@ import (
 
 const DEFAULT_FORMAT = `basic`
 
+var normRx = regexp.MustCompile(`(?:[\s\W\-\_]+)`)
 var log = logging.MustGetLogger(`main`)
 var plex *client.PlexClient
 
@@ -270,79 +272,214 @@ func main() {
 			},
 		},
 		{
+			Name:  `find`,
+			Usage: `Rapidly locate media entries.`,
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  `source-file, F`,
+					Usage: `Only output the source file(s) of matching media.`,
+				},
+				cli.BoolFlag{
+					Name:  `url, U`,
+					Usage: `Only output the Plex URL(s) of the matching media.`,
+				},
+			},
+			Action: func(c *cli.Context) {
+				sectionMatch := normalizeEntry(c.Args().Get(0))
+				groupMatch := normalizeEntry(c.Args().Get(1))
+				entryMatch := normalizeEntry(c.Args().Get(2))
+
+				path := []string{
+					`sections`,
+				}
+
+				// section match
+				if sectionMatch != `` {
+					if results, err := plex.ListDirectory(`library`, path); err == nil {
+						var section string
+
+						for _, directory := range results.Directories {
+							if entryMatches(directory.Title, sectionMatch) {
+								if groupMatch != `` {
+									section = directory.PathKey
+									break
+								} else {
+									fmt.Println(directory.Title)
+								}
+							}
+						}
+
+						if section != `` {
+							path = append(path, section, `all`)
+						} else {
+							return
+						}
+
+						// group match
+						if groupMatch != `` {
+							if results, err := plex.ListDirectory(`library`, path); err == nil {
+								var group string
+
+								for _, directory := range results.Directories {
+									if entryMatches(directory.Title, groupMatch) {
+										group = directory.PathKey
+										break
+									}
+								}
+
+								if group != `` {
+									if strings.HasPrefix(group, `/`) {
+										path = strings.Split(strings.TrimPrefix(group, `/library/`), `/`)
+									} else {
+										path = append(path, group)
+									}
+								} else {
+									return
+								}
+							}
+
+							// entry match
+							if results, err := plex.ListDirectory(`library`, path); err == nil {
+								videos := make(map[int]client.Video)
+
+								// add videos on this top-level
+								for _, video := range results.Videos {
+									videos[video.RatingKey] = video
+								}
+
+								// list seasons/subgroups
+								for _, directory := range results.Directories {
+									subpath := strings.Split(strings.TrimPrefix(directory.PathKey, `/library/`), `/`)
+
+									if subresults, err := plex.ListDirectory(`library`, subpath); err == nil {
+										for _, video := range subresults.Videos {
+											if _, ok := videos[video.RatingKey]; !ok {
+												videos[video.RatingKey] = video
+											}
+										}
+									}
+								}
+
+								for _, video := range videos {
+									if entryMatch == `` || (entryMatches(getEpisodeNumber(&video), entryMatch) || entryMatches(video.Title, entryMatch)) {
+										if c.Bool(`source-file`) {
+											for _, part := range video.Media.Parts {
+												fmt.Println(part.File)
+											}
+										} else if c.Bool(`url`) {
+											for _, part := range video.Media.Parts {
+												fmt.Printf("%s%s\n", plex.Address(), part.Key)
+											}
+										} else {
+											fmt.Printf("%d\t%s\t%s\t%s\t%s\t%s\t%s\n",
+												video.RatingKey,
+												video.Type,
+												video.GrandparentTitle,
+												getEpisodeNumber(&video),
+												video.Title,
+												getReadableTime(video.Duration),
+												video.OriginallyAvailableAt)
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			},
+		}, {
 			Name:  `info`,
 			Usage: `Show information about a specific media entry`,
-			Flags: []cli.Flag{},
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  `source-file, F`,
+					Usage: `Only output the source file(s) of the media file.`,
+				},
+				cli.BoolFlag{
+					Name:  `url, U`,
+					Usage: `Only output the Plex URL(s) of the media file.`,
+				},
+			},
 			Action: func(c *cli.Context) {
 				if id, err := stringutil.ConvertToInteger(c.Args().First()); err == nil {
 					if video, err := plex.GetMetadata(int(id)); err == nil {
 						printWithFormat(c.GlobalString(`format`), video, func() {
-							tw := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-
-							fmt.Fprintf(tw, "Section:\t%s\n", video.LibrarySectionTitle)
-							fmt.Fprintf(tw, "Show:\t%s\n", video.GrandparentTitle)
-							fmt.Fprintf(tw, "Title:\t%s\n", video.Title)
-							fmt.Fprintf(tw, "Season:\t%d\n", video.ParentIndex)
-							fmt.Fprintf(tw, "Episode:\t%d\n", video.Index)
-							fmt.Fprintf(tw, "Duration:\t%s\n", getReadableTime(video.Duration))
-							fmt.Fprintf(tw, "Summary:\t%s\n", video.Summary)
-							fmt.Fprintf(tw, "Rating:\t%s\n", video.ContentRating)
-							fmt.Fprintf(tw, "Resolution:\t%dx%d\n", video.Media.Width, video.Media.VideoResolution)
-							fmt.Fprintf(tw, "Framerate:\t%s\n", video.Media.VideoFrameRate)
-							fmt.Fprintf(tw, "Parts:\n")
-
-							if len(video.Media.Parts) > 0 {
-								for i, part := range video.Media.Parts {
-									fmt.Fprintf(tw, "%d:\n", i)
-									fmt.Fprintf(tw, "  ID:\t%d\n", part.Id)
-									fmt.Fprintf(tw, "  URL:\t%s%s\n", plex.Address(), part.Key)
-									fmt.Fprintf(tw, "  SourceFile:\t%s\n", part.File)
-									fmt.Fprintf(tw, "  Duration:\t%s\n", getReadableTime(part.Duration))
-
-									if v, err := stringutil.ToByteString(part.Size, `%.2f`); err == nil {
-										fmt.Fprintf(tw, "  Size:\t%s\n", v)
-									}
-
-									fmt.Fprintf(tw, "  Container:\t%s\n", part.Container)
-									fmt.Fprintf(tw, "  Streams:\n")
-
-									for j, stream := range part.Streams {
-										fmt.Fprintf(tw, "  %d:\n", j)
-
-										switch stream.StreamType {
-										case 1:
-											fmt.Fprintf(tw, "    Type:\tvideo\n")
-											fmt.Fprintf(tw, "    Resolution:\t%dx%d\n", stream.Width, stream.Height)
-											fmt.Fprintf(tw, "    Codec:\t%s (%s)\n", stream.Codec, stream.CodecID)
-											fmt.Fprintf(tw, "    Duration:\t%s\n", getReadableTime(stream.Duration))
-											fmt.Fprintf(tw, "    Framerate:\t%g (%s)\n", stream.FrameRate, stream.FrameRateMode)
-											fmt.Fprintf(tw, "    BPP:\t%d\n", stream.BitDepth)
-											fmt.Fprintf(tw, "    PixelFormat:\t%s\n", stream.PixelFormat)
-
-										case 2:
-											fmt.Fprintf(tw, "    Type:\taudio\n")
-											fmt.Fprintf(tw, "    Codec:\t%s (%s)\n", stream.Codec, stream.CodecID)
-											fmt.Fprintf(tw, "    Duration:\t%s\n", getReadableTime(stream.Duration))
-											fmt.Fprintf(tw, "    Bitrate:\t%dKbps\n", stream.Bitrate)
-											fmt.Fprintf(tw, "    BitsPerSample:\t%d\n", stream.BitDepth)
-
-										case 3:
-											fmt.Fprintf(tw, "    Type:\tsubtitles\n")
-											fmt.Fprintf(tw, "    Codec:\t%s (%s)\n", stream.Codec, stream.CodecID)
-										}
-
-										if stream.Profile != `` {
-											fmt.Fprintf(tw, "    Profile:\t%s\n", stream.Profile)
-										}
-
-										fmt.Fprintf(tw, "    StreamID:\t%d\n", stream.Id)
-									}
-
-									fmt.Fprintf(tw, "\n")
+							if c.Bool(`source-file`) {
+								for _, part := range video.Media.Parts {
+									fmt.Println(part.File)
 								}
-							}
+							} else if c.Bool(`url`) {
+								for _, part := range video.Media.Parts {
+									fmt.Printf("%s%s\n", plex.Address(), part.Key)
+								}
+							} else {
+								tw := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
 
-							tw.Flush()
+								fmt.Fprintf(tw, "Section:\t%s\n", video.LibrarySectionTitle)
+								fmt.Fprintf(tw, "Show:\t%s\n", video.GrandparentTitle)
+								fmt.Fprintf(tw, "Title:\t%s\n", video.Title)
+								fmt.Fprintf(tw, "Season:\t%d\n", video.ParentIndex)
+								fmt.Fprintf(tw, "Episode:\t%d\n", video.Index)
+								fmt.Fprintf(tw, "Duration:\t%s\n", getReadableTime(video.Duration))
+								fmt.Fprintf(tw, "Summary:\t%s\n", video.Summary)
+								fmt.Fprintf(tw, "Rating:\t%s\n", video.ContentRating)
+								fmt.Fprintf(tw, "Resolution:\t%dx%d\n", video.Media.Width, video.Media.VideoResolution)
+								fmt.Fprintf(tw, "Framerate:\t%s\n", video.Media.VideoFrameRate)
+								fmt.Fprintf(tw, "Parts:\n")
+
+								if len(video.Media.Parts) > 0 {
+									for i, part := range video.Media.Parts {
+										fmt.Fprintf(tw, "%d:\n", i)
+										fmt.Fprintf(tw, "  ID:\t%d\n", part.Id)
+										fmt.Fprintf(tw, "  URL:\t%s%s\n", plex.Address(), part.Key)
+										fmt.Fprintf(tw, "  SourceFile:\t%s\n", part.File)
+										fmt.Fprintf(tw, "  Duration:\t%s\n", getReadableTime(part.Duration))
+
+										if v, err := stringutil.ToByteString(part.Size, `%.2f`); err == nil {
+											fmt.Fprintf(tw, "  Size:\t%s\n", v)
+										}
+
+										fmt.Fprintf(tw, "  Container:\t%s\n", part.Container)
+										fmt.Fprintf(tw, "  Streams:\n")
+
+										for j, stream := range part.Streams {
+											fmt.Fprintf(tw, "  %d:\n", j)
+
+											switch stream.StreamType {
+											case 1:
+												fmt.Fprintf(tw, "    Type:\tvideo\n")
+												fmt.Fprintf(tw, "    Resolution:\t%dx%d\n", stream.Width, stream.Height)
+												fmt.Fprintf(tw, "    Codec:\t%s (%s)\n", stream.Codec, stream.CodecID)
+												fmt.Fprintf(tw, "    Duration:\t%s\n", getReadableTime(stream.Duration))
+												fmt.Fprintf(tw, "    Framerate:\t%g (%s)\n", stream.FrameRate, stream.FrameRateMode)
+												fmt.Fprintf(tw, "    BPP:\t%d\n", stream.BitDepth)
+												fmt.Fprintf(tw, "    PixelFormat:\t%s\n", stream.PixelFormat)
+
+											case 2:
+												fmt.Fprintf(tw, "    Type:\taudio\n")
+												fmt.Fprintf(tw, "    Codec:\t%s (%s)\n", stream.Codec, stream.CodecID)
+												fmt.Fprintf(tw, "    Duration:\t%s\n", getReadableTime(stream.Duration))
+												fmt.Fprintf(tw, "    Bitrate:\t%dKbps\n", stream.Bitrate)
+												fmt.Fprintf(tw, "    BitsPerSample:\t%d\n", stream.BitDepth)
+
+											case 3:
+												fmt.Fprintf(tw, "    Type:\tsubtitles\n")
+												fmt.Fprintf(tw, "    Codec:\t%s (%s)\n", stream.Codec, stream.CodecID)
+											}
+
+											if stream.Profile != `` {
+												fmt.Fprintf(tw, "    Profile:\t%s\n", stream.Profile)
+											}
+
+											fmt.Fprintf(tw, "    StreamID:\t%d\n", stream.Id)
+										}
+
+										fmt.Fprintf(tw, "\n")
+									}
+								}
+
+								tw.Flush()
+							}
 						})
 					} else {
 						log.Fatal(err)
@@ -402,6 +539,21 @@ func getEpisodeNumber(video *client.Video) string {
 	}
 
 	return ``
+}
+
+func normalizeEntry(input string) string {
+	input = normRx.ReplaceAllString(input, ``)
+	input = strings.ToLower(input)
+
+	return input
+}
+
+func entryMatches(have string, want string) bool {
+	if strings.Contains(normalizeEntry(have), normalizeEntry(want)) {
+		return true
+	}
+
+	return false
 }
 
 func printAsciiProgressBar(w io.Writer, percent float64, totalChars int, state string) {
