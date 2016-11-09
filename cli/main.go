@@ -289,6 +289,8 @@ func main() {
 				sectionMatch := normalizeEntry(c.Args().Get(0))
 				groupMatch := normalizeEntry(c.Args().Get(1))
 				entryMatch := normalizeEntry(c.Args().Get(2))
+				tw := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
+				lines := make([]string, 0)
 
 				path := []string{
 					`sections`,
@@ -301,45 +303,41 @@ func main() {
 
 						for _, directory := range results.Directories {
 							if entryMatches(directory.Title, sectionMatch) {
-								if groupMatch != `` {
-									section = directory.PathKey
-									break
-								} else {
-									fmt.Println(directory.Title)
-								}
+								section = directory.PathKey
+								break
 							}
 						}
 
 						if section != `` {
 							path = append(path, section, `all`)
-						} else {
-							return
 						}
 
 						// group match
-						if groupMatch != `` {
-							if results, err := plex.ListDirectory(`library`, path); err == nil {
-								var group string
+						if results, err := plex.ListDirectory(`library`, path); err == nil {
+							var group string
 
-								for _, directory := range results.Directories {
-									if entryMatches(directory.Title, groupMatch) {
+							for _, directory := range results.Directories {
+								if entryMatches(directory.Title, groupMatch) {
+									if entryMatch == `` {
+										lines = append(lines, directory.Title)
+									} else {
 										group = directory.PathKey
 										break
 									}
 								}
-
-								if group != `` {
-									if strings.HasPrefix(group, `/`) {
-										path = strings.Split(strings.TrimPrefix(group, `/library/`), `/`)
-									} else {
-										path = append(path, group)
-									}
-								} else {
-									return
-								}
 							}
 
-							// entry match
+							if group != `` {
+								if strings.HasPrefix(group, `/`) {
+									path = strings.Split(strings.TrimPrefix(group, `/library/`), `/`)
+								} else {
+									path = append(path, group)
+								}
+							}
+						}
+
+						// entry match
+						if entryMatch != `` {
 							if results, err := plex.ListDirectory(`library`, path); err == nil {
 								videos := make(map[int]client.Video)
 
@@ -361,8 +359,6 @@ func main() {
 									}
 								}
 
-								lines := make([]string, 0)
-
 								for _, video := range videos {
 									if entryMatch == `` || (entryMatches(getEpisodeNumber(&video), entryMatch) || entryMatches(video.Title, entryMatch)) {
 										if c.Bool(`source-file`) {
@@ -383,20 +379,18 @@ func main() {
 										}
 									}
 								}
-
-								sort.Strings(lines)
-
-								tw := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-
-								for _, line := range lines {
-									fmt.Fprintf(tw, "%s\n", line)
-								}
-
-								tw.Flush()
 							}
 						}
 					}
 				}
+
+				sort.Strings(lines)
+
+				for _, line := range lines {
+					fmt.Fprintf(tw, "%s\n", line)
+				}
+
+				tw.Flush()
 			},
 		}, {
 			Name:  `info`,
