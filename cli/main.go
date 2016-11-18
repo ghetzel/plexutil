@@ -15,7 +15,6 @@ import (
 	"math"
 	"os"
 	"regexp"
-	"sort"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -270,127 +269,6 @@ func main() {
 					log.Fatal(err)
 					return
 				}
-			},
-		},
-		{
-			Name:  `find`,
-			Usage: `Rapidly locate media entries.`,
-			Flags: []cli.Flag{
-				cli.BoolFlag{
-					Name:  `source-file, F`,
-					Usage: `Only output the source file(s) of matching media.`,
-				},
-				cli.BoolFlag{
-					Name:  `url, U`,
-					Usage: `Only output the Plex URL(s) of the matching media.`,
-				},
-			},
-			Action: func(c *cli.Context) {
-				sectionMatch := normalizeEntry(c.Args().Get(0))
-				groupMatch := normalizeEntry(c.Args().Get(1))
-				entryMatch := normalizeEntry(c.Args().Get(2))
-				tw := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-				lines := make([]string, 0)
-
-				path := []string{
-					`sections`,
-				}
-
-				// section match
-				if sectionMatch != `` {
-					if results, err := plex.ListDirectory(`library`, path); err == nil {
-						var section string
-
-						for _, directory := range results.Directories {
-							if entryMatches(directory.Title, sectionMatch) {
-								section = directory.PathKey
-								break
-							}
-						}
-
-						if section != `` {
-							path = append(path, section, `all`)
-						}
-
-						// group match
-						if results, err := plex.ListDirectory(`library`, path); err == nil {
-							var group string
-
-							for _, directory := range results.Directories {
-								if entryMatches(directory.Title, groupMatch) {
-									if entryMatch == `` {
-										lines = append(lines, directory.Title)
-									} else {
-										group = directory.PathKey
-										break
-									}
-								}
-							}
-
-							if group != `` {
-								if strings.HasPrefix(group, `/`) {
-									path = strings.Split(strings.TrimPrefix(group, `/library/`), `/`)
-								} else {
-									path = append(path, group)
-								}
-							}
-						}
-
-						// entry match
-						if entryMatch != `` {
-							if results, err := plex.ListDirectory(`library`, path); err == nil {
-								videos := make(map[int]client.Video)
-
-								// add videos on this top-level
-								for _, video := range results.Videos {
-									videos[video.RatingKey] = video
-								}
-
-								// list seasons/subgroups
-								for _, directory := range results.Directories {
-									subpath := strings.Split(strings.TrimPrefix(directory.PathKey, `/library/`), `/`)
-
-									if subresults, err := plex.ListDirectory(`library`, subpath); err == nil {
-										for _, video := range subresults.Videos {
-											if _, ok := videos[video.RatingKey]; !ok {
-												videos[video.RatingKey] = video
-											}
-										}
-									}
-								}
-
-								for _, video := range videos {
-									if entryMatch == `` || (entryMatches(getEpisodeNumber(&video), entryMatch) || entryMatches(video.Title, entryMatch)) {
-										if c.Bool(`source-file`) {
-											for _, part := range video.Media.Parts {
-												lines = append(lines, part.File)
-											}
-										} else if c.Bool(`url`) {
-											for _, part := range video.Media.Parts {
-												lines = append(lines, fmt.Sprintf("%s%s", plex.Address(), part.Key))
-											}
-										} else {
-											lines = append(lines, fmt.Sprintf("%s\t%s\t%s\t%s\t%s",
-												video.GrandparentTitle,
-												getEpisodeNumber(&video),
-												video.Title,
-												getReadableTime(video.Duration),
-												video.OriginallyAvailableAt))
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-
-				sort.Strings(lines)
-
-				for _, line := range lines {
-					fmt.Fprintf(tw, "%s\n", line)
-				}
-
-				tw.Flush()
 			},
 		}, {
 			Name:  `info`,

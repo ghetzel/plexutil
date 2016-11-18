@@ -3,6 +3,7 @@ package client
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 type Stream struct {
@@ -166,4 +167,16 @@ type Video struct {
 	ViewOffset            int              `xml:"viewOffset,attr,omitempty" json:"ViewOffset,omitempty"` // "102000"
 	Writers               IdentifierSet    `xml:"Writer" json:"Writers,omitempty"`
 	Year                  int              `xml:"year,attr,omitempty" json:"Year,omitempty"` // "2016"
+}
+
+func (self *Video) OriginallyAvailableAtDate() time.Time {
+	if self.OriginallyAvailableAt == `` {
+		return time.Time{}
+	} else {
+		if tm, err := time.Parse(`2006-01-02`, self.OriginallyAvailableAt); err == nil {
+			return tm
+		} else {
+			return time.Time{}
+		}
+	}
 }
