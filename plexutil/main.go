@@ -85,10 +85,10 @@ func main() {
 			plex.IgnoreSSL = c.Bool(`ignore-ssl-verify`)
 
 			if err := plex.Initialize(); err != nil {
-				log.Fatal(err)
+				log.Fatalf("init err: %v", err)
 			}
 		} else {
-			log.Fatal(err)
+			log.Fatalf("config load error: %v", err)
 		}
 
 		return nil
@@ -140,7 +140,7 @@ func main() {
 
 					printWithFormat(format, responseBody)
 				} else {
-					log.Fatal(err)
+					log.Fatalf("request error: %v", err)
 				}
 			},
 		},
@@ -277,7 +277,7 @@ func main() {
 						tw.Flush()
 					})
 				} else {
-					log.Fatal(err)
+					log.Fatalf("list error: %v", err)
 					return
 				}
 			},
@@ -408,7 +408,7 @@ func printWithFormat(format string, data interface{}, fallbackFunc ...func()) {
 			if v, err := stringutil.ToString(data); err == nil {
 				output = []byte(v[:])
 			} else {
-				log.Fatal(err)
+				log.Fatalf("format error: %v", err)
 			}
 		}
 	}
@@ -416,7 +416,7 @@ func printWithFormat(format string, data interface{}, fallbackFunc ...func()) {
 	if err == nil {
 		fmt.Println(string(output[:]))
 	} else {
-		log.Fatal(err)
+		log.Fatalf("format error: %v", err)
 	}
 }
 

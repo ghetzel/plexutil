@@ -152,7 +152,7 @@ func (self *PlexClient) ListDirectory(area string, path []string) (MediaContaine
 
 		return results, nil
 	} else {
-		return results, err
+		return results, fmt.Errorf("request: %v", err)
 	}
 }
 
