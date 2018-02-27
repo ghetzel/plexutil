@@ -52,8 +52,9 @@ func main() {
 			Value: DEFAULT_FORMAT,
 		},
 		cli.StringFlag{
-			Name:  `url, U`,
-			Usage: `The base URL used to access the Plex Media Server`,
+			Name:   `url, U`,
+			Usage:  `The base URL used to access the Plex Media Server`,
+			EnvVar: `PLEXUTIL_URL`,
 		},
 	}
 
@@ -70,6 +71,10 @@ func main() {
 		if config, err := plexutil.LoadConfig(c.String(`config`)); err == nil || os.IsNotExist(err) {
 			if url := c.String(`url`); url != `` {
 				config.URL = url
+			}
+
+			if config.URL == `` {
+				log.Fatalf("Must specify a Plex Media Serve URL, via --url/-u or the PLEXUTIL_URL envvar.")
 			}
 
 			plex = client.NewFromConfig(config)
