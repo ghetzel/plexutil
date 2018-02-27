@@ -4,13 +4,6 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
-	"github.com/ghetzel/bee-hotel"
-	"github.com/ghetzel/cli"
-	"github.com/ghetzel/go-stockutil/stringutil"
-	"github.com/ghetzel/plexutil"
-	"github.com/ghetzel/plexutil/client"
-	"github.com/ghodss/yaml"
-	"github.com/op/go-logging"
 	"io"
 	"math"
 	"os"
@@ -18,6 +11,14 @@ import (
 	"strings"
 	"text/tabwriter"
 	"time"
+
+	"github.com/ghetzel/bee-hotel"
+	"github.com/ghetzel/cli"
+	"github.com/ghetzel/go-stockutil/stringutil"
+	"github.com/ghetzel/plexutil"
+	"github.com/ghetzel/plexutil/client"
+	"github.com/ghodss/yaml"
+	"github.com/op/go-logging"
 )
 
 const DEFAULT_FORMAT = `basic`

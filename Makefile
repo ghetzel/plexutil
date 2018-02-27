@@ -1,27 +1,15 @@
-.PHONY: test
+.PHONY: build ui
 
-all: vendor fmt build
+all: fmt deps build
 
-update:
-	test -d vendor && rm -rf vendor || exit 0
-	glide up --strip-vcs --update-vendored
-
-vendor:
-	go list github.com/Masterminds/glide
-	glide install --strip-vcs --update-vendored
-
-clean-bundle:
-	@test -d public && rm -rf public || true
-
-clean:
-	rm -rf vendor bin
+deps:
+	@go list golang.org/x/tools/cmd/goimports || go get golang.org/x/tools/cmd/goimports
+	go generate -x
+	go get .
 
 fmt:
-	gofmt -w .
-
-test:
-	go test -v client/*.go
+	goimports -w .
+	go vet .
 
 build: fmt
-	go build -o bin/`basename ${PWD}` cli/*.go
-
+	go build -o bin/plexutil ./plexutil

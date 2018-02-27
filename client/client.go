@@ -2,11 +2,12 @@ package client
 
 import (
 	"fmt"
+	"net/http"
+	"strings"
+
 	"github.com/ghetzel/bee-hotel"
 	"github.com/ghetzel/plexutil"
 	"github.com/op/go-logging"
-	"net/http"
-	"strings"
 )
 
 var log = logging.MustGetLogger(`plex`)

@@ -2,10 +2,11 @@ package plexutil
 
 import (
 	"fmt"
-	"github.com/ghodss/yaml"
 	"io/ioutil"
 	"os"
 	"strings"
+
+	"github.com/ghodss/yaml"
 )
 
 type Configuration struct {
