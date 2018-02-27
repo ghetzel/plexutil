@@ -56,6 +56,10 @@ func main() {
 			Usage:  `The base URL used to access the Plex Media Server`,
 			EnvVar: `PLEXUTIL_URL`,
 		},
+		cli.BoolFlag{
+			Name:  `ignore-ssl-verify, S`,
+			Usage: `Whether to ignore SSL verification.`,
+		},
 	}
 
 	app.Before = func(c *cli.Context) error {
@@ -78,6 +82,7 @@ func main() {
 			}
 
 			plex = client.NewFromConfig(config)
+			plex.IgnoreSSL = c.Bool(`ignore-ssl-verify`)
 
 			if err := plex.Initialize(); err != nil {
 				log.Fatal(err)

@@ -1,6 +1,7 @@
 package client
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"strings"
@@ -14,6 +15,7 @@ var log = logging.MustGetLogger(`plex`)
 
 type PlexClient struct {
 	*bee.MultiClient
+	IgnoreSSL bool
 }
 
 func New(address string) *PlexClient {
@@ -62,6 +64,18 @@ func (self *PlexClient) Address() string {
 func (self *PlexClient) Initialize() error {
 	self.HeaderSet(`X-Plex-Product`, plexutil.Name)
 	self.HeaderSet(`X-Plex-Version`, plexutil.Version)
+
+	if self.IgnoreSSL {
+		log.Warningf("SSL certificate verification is disabled")
+	}
+
+	self.SetClient(&http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: self.IgnoreSSL,
+			},
+		},
+	})
 
 	return nil
 }
