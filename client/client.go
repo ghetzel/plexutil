@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/ghetzel/bee-hotel"
 	"github.com/ghetzel/go-stockutil/log"
@@ -14,6 +15,7 @@ import (
 type PlexClient struct {
 	*bee.MultiClient
 	IgnoreSSL bool
+	Timeout   time.Duration
 }
 
 func New(address string) *PlexClient {
@@ -34,6 +36,7 @@ func New(address string) *PlexClient {
 
 	return &PlexClient{
 		MultiClient: mc,
+		Timeout:     5 * time.Second,
 	}
 }
 
@@ -68,6 +71,7 @@ func (self *PlexClient) Initialize() error {
 	}
 
 	self.SetClient(&http.Client{
+		Timeout: self.Timeout,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: self.IgnoreSSL,

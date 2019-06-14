@@ -59,6 +59,11 @@ func main() {
 			Name:  `ignore-ssl-verify, S`,
 			Usage: `Whether to ignore SSL verification.`,
 		},
+		cli.DurationFlag{
+			Name:  `timeout, T`,
+			Usage: `HTTP client timeout for communicating with the Plex server.`,
+			Value: 5 * time.Second,
+		},
 	}
 
 	app.Before = func(c *cli.Context) error {
@@ -75,6 +80,7 @@ func main() {
 
 			plex = client.NewFromConfig(config)
 			plex.IgnoreSSL = c.Bool(`ignore-ssl-verify`)
+			plex.Timeout = c.Duration(`timeout`)
 
 			log.FatalfIf("init err: %v", plex.Initialize())
 		} else {
