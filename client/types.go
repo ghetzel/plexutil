@@ -1,5 +1,11 @@
 package client
 
+import (
+	"time"
+
+	"github.com/ghetzel/go-stockutil/timeutil"
+)
+
 type Setting struct {
 	Advanced   int    `xml:"advanced,attr,omitempty" json:"Advanced,omitempty"`     // "1"
 	Default    string `xml:"default,attr,omitempty" json:"Default,omitempty"`       // ""
@@ -87,7 +93,7 @@ type MediaContainer struct {
 	NoCache                       int         `xml:"nocache,attr,omitempty" json:"Nocache,omitempty"`
 	Offset                        int         `xml:"offset,attr,omitempty" json:"Offset,omitempty"`
 	Settings                      []Setting   `xml:"Setting" json:"Settings"`
-	Size                          int         `xml:"size,omitempty" json:"Size,omitempty"` // "8"
+	Size                          interface{} `xml:"size,omitempty" json:"Size,omitempty"` // "8"
 	SortAscending                 int         `xml:"sortAsc,attr,omitempty" json:"SortAsc,omitempty"`
 	Thumb                         string      `xml:"thumb,attr,omitempty" json:"Thumb,omitempty"`
 	Title1                        string      `xml:"title1,attr,omitempty" json:"Title1,omitempty"` // "Plex Library"
@@ -166,9 +172,13 @@ type TranscodeSession struct {
 	Progress      float64 `xml:"progress,attr,omitempty" json:"Progress,omitempty"`           // "26.899999618530273"
 	Protocol      string  `xml:"protocol,attr,omitempty" json:"Protocol,omitempty"`           // "http"
 	Remaining     int     `xml:"remaining,attr,omitempty" json:"Remaining,omitempty"`         // "19543"
-	Speed         int     `xml:"speed,attr,omitempty" json:"Speed,omitempty"`                 // "0"
+	Speed         float64 `xml:"speed,attr,omitempty" json:"Speed,omitempty"`                 // "0"
 	Throttled     int     `xml:"throttled,attr,omitempty" json:"Throttled,omitempty"`         // "1"
 	VideoCodec    string  `xml:"videoCodec,attr,omitempty" json:"VideoCodec,omitempty"`       // "h264"
 	VideoDecision string  `xml:"videoDecision,attr,omitempty" json:"VideoDecision,omitempty"` // "transcode"
 	Width         int     `xml:"width,attr,omitempty" json:"Width,omitempty"`                 // "640"
+}
+
+func (self TranscodeSession) TimeDuration() string {
+	return timeutil.FormatTimer(time.Duration(self.Duration) * time.Millisecond)
 }

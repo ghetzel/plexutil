@@ -7,11 +7,9 @@ import (
 	"strings"
 
 	"github.com/ghetzel/bee-hotel"
+	"github.com/ghetzel/go-stockutil/log"
 	"github.com/ghetzel/plexutil"
-	"github.com/op/go-logging"
 )
-
-var log = logging.MustGetLogger(`plex`)
 
 type PlexClient struct {
 	*bee.MultiClient

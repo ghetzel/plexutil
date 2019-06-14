@@ -1,15 +1,20 @@
-.PHONY: build ui
+LOCALS   := $(shell find . -type f -name '*.go')
 
-all: fmt deps build
+.PHONY: deps fmt build
+.EXPORT_ALL_VARIABLES:
+GO111MODULE = on
+
+all: deps fmt build
 
 deps:
-	@go list golang.org/x/tools/cmd/goimports || go get golang.org/x/tools/cmd/goimports
-	go generate -x
-	go get .
+	go get ./...
 
 fmt:
-	goimports -w .
-	go vet .
+	go generate -x ./...
+	gofmt -w $(LOCALS)
+	go vet ./...
+	-go mod tidy
 
-build: fmt
-	go build -o bin/plexutil ./plexutil
+build:
+	go build -o bin/plexutil cmd/plexutil/*.go
+	which plexutil && cp -v bin/plexutil $(shell which plexutil) || true

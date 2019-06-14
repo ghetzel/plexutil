@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/ghetzel/go-stockutil/timeutil"
 )
 
 type Stream struct {
@@ -59,7 +61,7 @@ type Media struct {
 	VideoCodec      string  `xml:"videoCodec,omitempty" json:"VideoCodec,omitempty"`                // "h264"
 	VideoFrameRate  string  `xml:"videoFrameRate,attr,omitempty" json:"VideoFrameRate,omitempty"`   // "24p"
 	VideoProfile    string  `xml:"videoProfile,attr,omitempty" json:"VideoProfile,omitempty"`       // "high"
-	VideoResolution int     `xml:"videoResolution,attr,omitempty" json:"VideoResolution,omitempty"` // "720"
+	VideoResolution string  `xml:"videoResolution,attr,omitempty" json:"VideoResolution,omitempty"` // "720"
 	Width           int     `xml:"width,attr,omitempty" json:"Width,omitempty"`                     // "1280"
 }
 
@@ -167,6 +169,10 @@ type Video struct {
 	ViewOffset            int              `xml:"viewOffset,attr,omitempty" json:"ViewOffset,omitempty"` // "102000"
 	Writers               IdentifierSet    `xml:"Writer" json:"Writers,omitempty"`
 	Year                  int              `xml:"year,attr,omitempty" json:"Year,omitempty"` // "2016"
+}
+
+func (self *Video) TimeElapsed() string {
+	return timeutil.FormatTimer(time.Duration(self.ViewOffset) * time.Millisecond)
 }
 
 func (self *Video) OriginallyAvailableAtDate() time.Time {

@@ -9,22 +9,21 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"text/tabwriter"
 	"time"
 
+	"github.com/NonerKao/color-aware-tabwriter"
 	"github.com/ghetzel/bee-hotel"
 	"github.com/ghetzel/cli"
+	"github.com/ghetzel/go-stockutil/log"
 	"github.com/ghetzel/go-stockutil/stringutil"
 	"github.com/ghetzel/plexutil"
 	"github.com/ghetzel/plexutil/client"
 	"github.com/ghodss/yaml"
-	"github.com/op/go-logging"
 )
 
 const DEFAULT_FORMAT = `basic`
 
 var normRx = regexp.MustCompile(`(?:[\s\W\-\_]+)`)
-var log = logging.MustGetLogger(`main`)
 var plex *client.PlexClient
 
 func main() {
@@ -63,14 +62,7 @@ func main() {
 	}
 
 	app.Before = func(c *cli.Context) error {
-		logging.SetFormatter(logging.MustStringFormatter(`%{color}%{level:.4s}%{color:reset}[%{id:04d}] %{message}`))
-
-		if level, err := logging.LogLevel(c.String(`log-level`)); err == nil {
-			logging.SetLevel(level, `main`)
-			logging.SetLevel(level, `plex`)
-		} else {
-			return err
-		}
+		log.SetLevelString(c.String(`log-level`))
 
 		if config, err := plexutil.LoadConfig(c.String(`config`)); err == nil || os.IsNotExist(err) {
 			if url := c.String(`url`); url != `` {
@@ -84,9 +76,7 @@ func main() {
 			plex = client.NewFromConfig(config)
 			plex.IgnoreSSL = c.Bool(`ignore-ssl-verify`)
 
-			if err := plex.Initialize(); err != nil {
-				log.Fatalf("init err: %v", err)
-			}
+			log.FatalfIf("init err: %v", plex.Initialize())
 		} else {
 			log.Fatalf("config load error: %v", err)
 		}
@@ -183,21 +173,43 @@ func main() {
 				}
 
 				printWithFormat(c.GlobalString(`format`), videos, func() {
+					if len(videos) == 0 {
+						return
+					}
+
 					tw := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
 
 					fmt.Fprintf(tw, "User\tState\tProgress\tShow\tEpisode\tTitle\tAddress\tDevice\n")
 
 					for _, video := range videos {
-						fmt.Fprintf(tw, "%s\t%s\t",
-							video.User.Title,
-							video.Player.State)
+						state := video.Player.State
+
+						switch state {
+						case `paused`:
+							state = `${yellow}` + state + `${reset}`
+						case `playing`:
+							state = `${green}` + state + `${reset}`
+						case `buffering`:
+							state = `${red}` + state + `${reset}`
+						}
+
+						log.CFPrintf(tw, "%s\t%s\t", video.User.Title, state)
 
 						if video.Player.State == `` {
 							if video.ViewedAt > 0 {
 								fmt.Fprintf(tw, "%s", time.Unix(video.ViewedAt, 0).Format(`2006-01-02 15:04-0700`))
 							}
 						} else {
-							printAsciiProgressBar(tw, video.TranscodeSession.Progress, 20, video.Player.State)
+							percent := (float64(video.ViewOffset) / float64(video.Duration)) * 100.0
+
+							printAsciiProgressBar(tw, percent, 20, video.Player.State)
+							fmt.Fprintf(
+								tw,
+								" %2.1f%% %s/%s",
+								percent,
+								video.TimeElapsed(),
+								video.TranscodeSession.TimeDuration(),
+							)
 						}
 
 						fmt.Fprintf(tw, "\t%s\t%s\t%s\t%s\t%s\n",
@@ -317,7 +329,7 @@ func main() {
 								fmt.Fprintf(tw, "Duration:\t%s\n", getReadableTime(video.Duration))
 								fmt.Fprintf(tw, "Summary:\t%s\n", video.Summary)
 								fmt.Fprintf(tw, "Rating:\t%s\n", video.ContentRating)
-								fmt.Fprintf(tw, "Resolution:\t%dx%d\n", video.Media.Width, video.Media.VideoResolution)
+								fmt.Fprintf(tw, "Resolution:\t%dx%v\n", video.Media.Width, video.Media.VideoResolution)
 								fmt.Fprintf(tw, "Framerate:\t%s\n", video.Media.VideoFrameRate)
 								fmt.Fprintf(tw, "Parts:\n")
 
