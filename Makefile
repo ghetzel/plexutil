@@ -2,9 +2,11 @@ LOCALS   := $(shell find . -type f -name '*.go')
 
 .PHONY: deps fmt build
 .EXPORT_ALL_VARIABLES:
-GO111MODULE = on
 
-all: deps fmt build
+GO111MODULE = on
+CGO_ENABLED = 0
+
+all: fmt build
 
 deps:
 	go get ./...

@@ -1,126 +1,118 @@
 package client
 
 import (
-	"crypto/tls"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/ghetzel/bee-hotel"
-	"github.com/ghetzel/go-stockutil/log"
+	"github.com/ghetzel/go-stockutil/httputil"
 	"github.com/ghetzel/plexutil"
 )
 
 type PlexClient struct {
-	*bee.MultiClient
+	*httputil.Client
 	IgnoreSSL bool
 	Timeout   time.Duration
+	inited    bool
 }
 
 func New(address string) *PlexClient {
-	mc := bee.NewMultiClient(address)
-	mc.ImmediatePreRequestHooks = []bee.ImmediatePreRequestHook{
-		func(request *http.Request) error {
-			log.Debugf("http: %s %s", request.Method, request.URL.String())
-
-			for name, values := range request.Header {
-				for _, value := range values {
-					log.Debugf("http:  %- 24s: %s", name, value)
-				}
-			}
-
-			return nil
-		},
+	var client = &PlexClient{
+		Client:  httputil.MustClient(address),
+		Timeout: 5 * time.Second,
 	}
 
-	return &PlexClient{
-		MultiClient: mc,
-		Timeout:     5 * time.Second,
-	}
+	client.SetPreRequestHook(func(_ *http.Request) (interface{}, error) {
+		if client.inited {
+			return nil, nil
+		} else {
+			return nil, client.init()
+		}
+	})
+
+	return client
 }
 
 func NewFromConfig(config plexutil.Configuration) *PlexClient {
-	client := New(config.URL)
+	var client = New(config.URL)
 
-	if config.Parameters != nil {
-		client.RequestQueryStrings = config.Parameters
+	for k, v := range config.Parameters {
+		client.SetParam(k, v)
 	}
 
-	if config.Headers != nil {
-		client.RequestHeaders = config.Headers
+	for k, v := range config.Headers {
+		client.SetHeader(k, v)
 	}
 
 	return client
 }
 
 func (self *PlexClient) Address() string {
-	if len(self.Addresses) > 0 {
-		return self.Addresses[0]
-	}
-
-	return ``
+	return self.URI().String()
 }
 
-func (self *PlexClient) Initialize() error {
-	self.HeaderSet(`X-Plex-Product`, plexutil.Name)
-	self.HeaderSet(`X-Plex-Version`, plexutil.Version)
-
-	if self.IgnoreSSL {
-		log.Warningf("SSL certificate verification is disabled")
-	}
-
-	self.SetClient(&http.Client{
-		Timeout: self.Timeout,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: self.IgnoreSSL,
-			},
-		},
-	})
+func (self *PlexClient) init() error {
+	self.SetHeader(`X-Plex-Product`, plexutil.Name)
+	self.SetHeader(`X-Plex-Version`, plexutil.Version)
+	self.SetInsecureTLS(self.IgnoreSSL)
+	self.inited = true
 
 	return nil
 }
 
 func (self *PlexClient) GetStatus() (MediaContainer, error) {
-	status := MediaContainer{}
+	var status MediaContainer
 
-	if _, err := self.Request(`GET`, `/`, nil, &status, nil); err == nil {
-		return status, nil
+	if res, err := self.Get(`/`, nil, nil); err == nil {
+		if err := self.Decode(res.Body, &status); err == nil {
+			return status, nil
+		} else {
+			return status, err
+		}
 	} else {
 		return status, err
 	}
 }
 
 func (self *PlexClient) CurrentSessions() ([]Video, error) {
-	sessions := MediaContainer{}
+	var sessions MediaContainer
 
-	if _, err := self.Request(`GET`, `/status/sessions`, nil, &sessions, nil); err == nil {
-		return sessions.Videos, nil
+	if res, err := self.Get(`/status/sessions`, nil, nil); err == nil {
+		if err := self.Decode(res.Body, &sessions); err == nil {
+			return sessions.Videos, nil
+		} else {
+			return nil, err
+		}
 	} else {
-		return []Video{}, err
+		return nil, err
 	}
 }
 
 func (self *PlexClient) RecentSessions(perPage int, pageNum int) ([]Video, error) {
-	sessions := MediaContainer{}
+	var sessions MediaContainer
 
-	if _, err := self.Request(`GET`, `/status/sessions/history/all`, nil, &sessions, nil, func(request *bee.MultiClientRequest) error {
-		request.QuerySet(`X-Plex-Container-Size`, perPage)
-		request.QuerySet(`X-Plex-Container-Start`, (perPage * (pageNum - 1)))
-
-		return nil
-
-	}); err == nil {
-		return sessions.Videos, nil
+	if res, err := self.Get(
+		`/status/sessions/history/all`,
+		map[string]interface{}{
+			`X-Plex-Container-Size`:  perPage,
+			`X-Plex-Container-Start`: (perPage * (pageNum - 1)),
+		},
+		nil,
+	); err == nil {
+		if err := self.Decode(res.Body, &sessions); err == nil {
+			return sessions.Videos, nil
+		} else {
+			return nil, err
+		}
 	} else {
-		return []Video{}, err
+		return nil, err
 	}
 }
 
 func (self *PlexClient) ListDirectory(area string, path []string) (MediaContainer, error) {
-	results := MediaContainer{}
-	qs := make(map[string]interface{})
+	var results MediaContainer
+	var qs = make(map[string]interface{})
 
 	for i, _ := range path {
 		if path[i] == `folder` && len(path) > (i+1) {
@@ -130,38 +122,48 @@ func (self *PlexClient) ListDirectory(area string, path []string) (MediaContaine
 		}
 	}
 
-	if _, err := self.Request(`GET`, fmt.Sprintf("/%s/%s", area, strings.Join(path, `/`)), nil, &results, nil, func(request *bee.MultiClientRequest) error {
-		for k, v := range qs {
-			request.QuerySet(k, v)
-		}
+	if res, err := self.Get(
+		fmt.Sprintf("/%s/%s", area, strings.Join(path, `/`)),
+		qs,
+		nil,
+	); err == nil {
+		if err := self.Decode(res.Body, &results); err == nil {
+			// post-process directories to provide logical path components without
+			// dealing with querystrings
+			for i, directory := range results.Directories {
+				if strings.Contains(directory.Key, `?parent=`) {
+					parts := strings.Split(directory.Key, `?`)
+					parentKV := strings.SplitN(parts[1], `=`, 2)
 
-		return nil
-	}); err == nil {
-		// post-process directories to provide logical path components without
-		// dealing with querystrings
-		for i, directory := range results.Directories {
-			if strings.Contains(directory.Key, `?parent=`) {
-				parts := strings.Split(directory.Key, `?`)
-				parentKV := strings.SplitN(parts[1], `=`, 2)
-
-				if len(parentKV) == 2 {
-					results.Directories[i].PathKey = parentKV[1]
+					if len(parentKV) == 2 {
+						results.Directories[i].PathKey = parentKV[1]
+					}
+				} else {
+					results.Directories[i].PathKey = results.Directories[i].Key
 				}
-			} else {
-				results.Directories[i].PathKey = results.Directories[i].Key
 			}
-		}
 
-		return results, nil
+			return results, nil
+		} else {
+			return results, nil
+		}
 	} else {
 		return results, fmt.Errorf("request: %v", err)
 	}
 }
 
 func (self *PlexClient) GetMetadata(ratingKey int) (Video, error) {
-	results := MediaContainer{}
+	var results MediaContainer
 
-	if _, err := self.Request(`GET`, fmt.Sprintf("/library/metadata/%d", ratingKey), nil, &results, nil); err == nil {
+	if res, err := self.Get(
+		fmt.Sprintf("/library/metadata/%d", ratingKey),
+		nil,
+		nil,
+	); err == nil {
+		if err := self.Decode(res.Body, &results); err != nil {
+			return Video{}, err
+		}
+
 		if l := len(results.Videos); l == 1 {
 			video := results.Videos[0]
 			video.LibrarySectionID = results.LibrarySectionID

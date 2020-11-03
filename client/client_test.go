@@ -17,7 +17,7 @@ func newPlexClient(doInit bool) (*PlexClient, error) {
 
 	if v := client.Address(); v == addr {
 		if doInit {
-			if err := client.Initialize(); err != nil {
+			if err := client.init(); err != nil {
 				return nil, err
 			}
 		}

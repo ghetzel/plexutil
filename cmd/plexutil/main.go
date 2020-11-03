@@ -9,13 +9,14 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"text/tabwriter"
 	"time"
 
-	"github.com/NonerKao/color-aware-tabwriter"
-	"github.com/ghetzel/bee-hotel"
 	"github.com/ghetzel/cli"
+	"github.com/ghetzel/go-stockutil/httputil"
 	"github.com/ghetzel/go-stockutil/log"
 	"github.com/ghetzel/go-stockutil/stringutil"
+	"github.com/ghetzel/go-stockutil/typeutil"
 	"github.com/ghetzel/plexutil"
 	"github.com/ghetzel/plexutil/client"
 	"github.com/ghodss/yaml"
@@ -81,8 +82,6 @@ func main() {
 			plex = client.NewFromConfig(config)
 			plex.IgnoreSSL = c.Bool(`ignore-ssl-verify`)
 			plex.Timeout = c.Duration(`timeout`)
-
-			log.FatalfIf("init err: %v", plex.Initialize())
 		} else {
 			log.Fatalf("config load error: %v", err)
 		}
@@ -113,28 +112,37 @@ func main() {
 			Action: func(c *cli.Context) {
 				var body interface{}
 				var responseBody client.MediaContainer
+				var params = make(map[string]interface{})
+				var header = make(map[string]interface{})
 
-				if _, err := plex.Request(strings.ToUpper(c.String(`method`)), c.Args().First(), body, &responseBody, nil, func(request *bee.MultiClientRequest) error {
-					for _, qs := range c.StringSlice(`query`) {
-						pair := strings.SplitN(qs, `=`, 2)
-						request.QuerySet(pair[0], pair[1])
+				for _, qs := range c.StringSlice(`query`) {
+					var k, v = stringutil.SplitPair(qs, `=`)
+					params[k] = typeutil.Auto(v)
+				}
+
+				for _, qs := range c.StringSlice(`header`) {
+					var k, v = stringutil.SplitPair(qs, `=`)
+					params[k] = typeutil.Auto(v)
+				}
+
+				if res, err := plex.Request(
+					httputil.Method(c.String(`method`)),
+					c.Args().First(),
+					body,
+					params,
+					header,
+				); err == nil {
+					if err := plex.Decode(res.Body, &responseBody); err == nil {
+						var format = c.GlobalString(`format`)
+
+						if format == DEFAULT_FORMAT {
+							format = `yaml`
+						}
+
+						printWithFormat(format, responseBody)
+					} else {
+						log.Fatalf("decode error: %v", err)
 					}
-
-					for _, header := range c.StringSlice(`header`) {
-						pair := strings.SplitN(header, `=`, 2)
-						request.HeaderSet(pair[0], pair[1])
-					}
-
-					return nil
-
-				}); err == nil {
-					format := c.GlobalString(`format`)
-
-					if format == DEFAULT_FORMAT {
-						format = `yaml`
-					}
-
-					printWithFormat(format, responseBody)
 				} else {
 					log.Fatalf("request error: %v", err)
 				}
