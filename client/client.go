@@ -2,7 +2,6 @@ package client
 
 import (
 	"fmt"
-	"net/http"
 	"strings"
 	"time"
 
@@ -15,6 +14,7 @@ type PlexClient struct {
 	IgnoreSSL bool
 	Timeout   time.Duration
 	inited    bool
+	token     string
 }
 
 func New(address string) *PlexClient {
@@ -23,13 +23,11 @@ func New(address string) *PlexClient {
 		Timeout: 5 * time.Second,
 	}
 
-	client.SetPreRequestHook(func(_ *http.Request) (interface{}, error) {
-		if client.inited {
-			return nil, nil
-		} else {
-			return nil, client.init()
-		}
+	client.SetInitHook(func() error {
+		return client.init()
 	})
+
+	client.SetDecoder(httputil.XMLDecoder)
 
 	return client
 }
@@ -48,6 +46,10 @@ func NewFromConfig(config plexutil.Configuration) *PlexClient {
 	return client
 }
 
+func (self *PlexClient) SetAuthToken(token string) {
+	self.token = token
+}
+
 func (self *PlexClient) Address() string {
 	return self.URI().String()
 }
@@ -55,6 +57,11 @@ func (self *PlexClient) Address() string {
 func (self *PlexClient) init() error {
 	self.SetHeader(`X-Plex-Product`, plexutil.Name)
 	self.SetHeader(`X-Plex-Version`, plexutil.Version)
+
+	if self.token != `` {
+		self.SetHeader(`X-Plex-Token`, self.token)
+	}
+
 	self.SetInsecureTLS(self.IgnoreSSL)
 	self.inited = true
 

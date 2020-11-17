@@ -56,6 +56,11 @@ func main() {
 			Usage:  `The base URL used to access the Plex Media Server`,
 			EnvVar: `PLEXUTIL_URL`,
 		},
+		cli.StringFlag{
+			Name:   `token, K`,
+			Usage:  `Specify the token use when authorizing against the Plex Media Server.`,
+			EnvVar: `PLEXUTIL_TOKEN`,
+		},
 		cli.BoolFlag{
 			Name:  `ignore-ssl-verify, S`,
 			Usage: `Whether to ignore SSL verification.`,
@@ -82,6 +87,7 @@ func main() {
 			plex = client.NewFromConfig(config)
 			plex.IgnoreSSL = c.Bool(`ignore-ssl-verify`)
 			plex.Timeout = c.Duration(`timeout`)
+			plex.SetAuthToken(c.String(`token`))
 		} else {
 			log.Fatalf("config load error: %v", err)
 		}

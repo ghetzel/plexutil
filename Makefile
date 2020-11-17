@@ -19,4 +19,4 @@ fmt:
 
 build:
 	go build -o bin/plexutil cmd/plexutil/*.go
-	which plexutil && cp -v bin/plexutil $(shell which plexutil) || true
+	which plexutil 2> /dev/null && cp -v bin/plexutil $(shell which plexutil 2> /dev/null) || true
